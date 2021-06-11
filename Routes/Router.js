@@ -1,7 +1,6 @@
 const express = require("express");
 const JWT = require("jsonwebtoken");
 const User = require("../models/userSchema");
-const sendEMail = require("../utils/Email/sendEmail");
 const Token = require("../models/token.model");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
@@ -77,36 +76,39 @@ Router.post("/requestRequestpassword", async function (request, response) {
   response.status(200).send({ success: true, data: link });
 });
 
+Router.post("/passwordreset", async function (request, response) {
+  const { token, password, userId } = request.body; //Will work on this
 
-Router.post('/passwordreset', async function (request, response) {
+  let passwordResetToken = await Token.findOne({ userId });
 
-  const { token, password, userId } = request.body  //Will work on this
-  
-    let passwordResetToken = await Token.findOne({ userId })
-    
-    if (!passwordResetToken) throw new Error ("Invalid or Expired Password Reset token")
-    console.log("Heloooo")
-    const isValid = await bcrypt.compare(token, passwordResetToken.token)
+  if (!passwordResetToken)
+    throw new Error("Invalid or Expired Password Reset token");
+  console.log("Heloooo");
+  const isValid = await bcrypt.compare(token, passwordResetToken.token);
 
-    if (!isValid) throw new Error("Invalid or Expired Password Reset Tokens")
-    
-    console.log("Heloooo")
-    
-    const hash = await bcrypt.hash(password, Number(bcryptSalt))
-    await User.updateOne({ _id: userId }, { $set: { password: hash } }, { new: true })
-const user = await User.findById({ _id: userId });
-sendEmail(
-  user.email,
-  "Password Reset Successfully",
-  {
-    name: user.name,
-  },
-  "./template/resetPassword.handlebars"
-);
-await passwordResetToken.deleteOne();
-response.status(200).send({ success: true, data: "Password Reset Seccuessful" })
+  if (!isValid) throw new Error("Invalid or Expired Password Reset Tokens");
 
-})
+  console.log("Heloooo");
 
+  const hash = await bcrypt.hash(password, Number(bcryptSalt));
+  await User.updateOne(
+    { _id: userId },
+    { $set: { password: hash } },
+    { new: true }
+  );
+  const user = await User.findById({ _id: userId });
+
+  await sendEmail({
+    fromemail: "Express Delivery<expressdeliverygh@gmail.com",
+    toemail: user.email,
+    subject: "Password Reset Successfully",
+    text: "Your password has been changed successfully",
+  }).catch((err) => console.log(err));
+
+  // await passwordResetToken.deleteOne();
+  response
+    .status(200)
+    .send({ success: true, data: "Password Reset Seccuessful" });
+});
 
 module.exports = Router;
