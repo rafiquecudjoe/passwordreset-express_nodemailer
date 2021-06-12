@@ -4,7 +4,7 @@ const mongoose = require('mongoose')
 
 module.exports = async function connection() {
     try {
-        await mongoose.connect("mongodb+srv://admin:adm'n@cluster0.cvhh9.mongodb.net/myFirstDatabase?retryWrites=true&w=majority", {  useNewUrlParser: true,
+        await mongoose.connect(process.env.DB_URL, {  useNewUrlParser: true,
             useUnifiedTopology: true,
             useFindAndModify: false,
             useCreateIndex: true,

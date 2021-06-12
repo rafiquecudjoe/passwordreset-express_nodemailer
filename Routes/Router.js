@@ -10,16 +10,14 @@ const { response } = require("express");
 
 const Router = express();
 
-const JWT_SECRET = "mfefkuhio3k2rjkofn2mbikbkwjhnkj";
-bcryptSalt = 10;
-clientURL = "http://localhost:5000/api/v1";
+JWT_SECRET = process.env.JWT_SECRET;
+bcryptSalt = process.env.BCRYPT_SALT;
+clientURL = process.env.CLIENT_URL;
 
 Router.post("/signup", async function (request, response) {
   const { email, fullname, password } = request.body;
 
   let user = await User.findOne({ email });
-
-  console.log(fullname);
 
   if (user) {
     throw new Error("Email already exist");
@@ -67,11 +65,12 @@ Router.post("/requestRequestpassword", async function (request, response) {
   }).save();
 
   const link = `${clientURL}/passwordreset?token=${resetToken}&id=${user._id}`;
-  sendEmail(
+
+  await sendEmail(
     user.email,
     "Password Reset Request",
-    { name: user.name, link: link },
-    "../utils/Email/template/requestResetPassword.handlebars"
+    { name: user.fullname, link: link },
+    "./template/requestResetPassword.handlebars"
   );
   response.status(200).send({ success: true, data: link });
 });
@@ -83,12 +82,10 @@ Router.post("/passwordreset", async function (request, response) {
 
   if (!passwordResetToken)
     throw new Error("Invalid or Expired Password Reset token");
-  console.log("Heloooo");
+
   const isValid = await bcrypt.compare(token, passwordResetToken.token);
 
   if (!isValid) throw new Error("Invalid or Expired Password Reset Tokens");
-
-  console.log("Heloooo");
 
   const hash = await bcrypt.hash(password, Number(bcryptSalt));
   await User.updateOne(
@@ -98,14 +95,14 @@ Router.post("/passwordreset", async function (request, response) {
   );
   const user = await User.findById({ _id: userId });
 
-  await sendEmail({
-    fromemail: "Express Delivery<expressdeliverygh@gmail.com",
-    toemail: user.email,
-    subject: "Password Reset Successfully",
-    text: "Your password has been changed successfully",
-  }).catch((err) => console.log(err));
+  await sendEmail(
+    user.email,
+    "Password Reset Successfully",
+    { name: user.fullname },
+    "./template/resetPassword.handlebars"
+  ).catch((err) => console.log(err));
 
-  // await passwordResetToken.deleteOne();
+  await passwordResetToken.deleteOne();
   response
     .status(200)
     .send({ success: true, data: "Password Reset Seccuessful" });

@@ -3,93 +3,33 @@ const handlebars = require("handlebars");
 const fs = require("fs");
 const path = require("path");
 const { getMaxListeners } = require("process");
-const { promisify } = require("util");
+const { text } = require("express");
 
-const readFile= promisify(fs.readFile)
-
-const sendEmail = async(options)  => {
-
+const sendEmail = async (email, subject, payload, template) => {
   const transporter = nodemailer.createTransport({
-      host: 'smtp.mailtrap.io',
-      port: 2525,
-      auth: {
-          user: 'd161ea2776db22',
-          pass: '34493077e673bb'
-      }
-  })
- 
+    host: process.env.HOST,
+    port: process.env.EMAIL_PORT,
+    auth: {
+      user: process.env.USER,
+      pass: process.env.PASS,
+    },
+  });
 
-  const html = await  readFile('./utils/Email/template/resetPassword.handlebars', 'utf8')
-  const template = await  handlebars.compile(html)
+  const source = await fs.readFileSync(path.join(__dirname, template), "utf8");
+  const compiledTemplate = await handlebars.compile(source);
 
-  let name = {
-    username:"toto"
-  }
+  const mailOptions = () => {
+    return {
+      from: "EXPRESS DELIVERY<expresseliverygh@gmail.com>",
+      to: email,
+      subject: subject,
+      text: text,
+      html: compiledTemplate(payload),
+    };
+  };
 
-  let htmlToSend = template(name)
-    
-  
-  const mailOptions = {
-      from:options.fromemail,
-      to:options.toemail,
-      subject:options.subject,
-    text: options.text,
-      html:htmlToSend
-     
-  }
-
-  await transporter.sendMail(mailOptions )
-      .then((response) => console.log(response))
-      .catch(err=>console.log(err))
-  
-
-}
-
-
-//   try {
-//     // create reusable transporter object using the default SMTP transport
-//     const transporter = nodemailer.createTransport({
-//       host: "smtp.mailtrap.io",
-//       port: 2525,
-//       auth: {
-//         user:"d161ea2776db22",
-//         pass:"34493077e673bb", // naturally, replace both with your real credentials or an application-specific password
-//       },
-//     });
-
-//  
-//     const options  = {
-    
-//         from: "rasgalazy5@gmail.com",
-//         to: "meinaccra@gmail.com",
-//       subject: 'Hiiiiiiiiii',
-//         text: 'How are you'
-      //  html: ,
-//       }
-   
-//     // Send email
-//     transporter.sendMail(options, (error, info) => {
-//       if (error) {
-//         return error;
-//       } else {
-//         return res.status(200).json({
-//           success: true,
-//         });
-//       }
-//     });
-//   } catch (error) {
-//     return error;
-//   }
-// };
-
-/*
-Example:
-sendEmail(
-  "youremail@gmail.com,
-  "Email subject",
-  { name: "Eze" },
-  "./templates/layouts/main.handlebars"
-);
-*/
+  const delivered = await transporter.sendMail(mailOptions());
+  if (!delivered) throw new Error("Email not sent");
+};
 
 module.exports = sendEmail;

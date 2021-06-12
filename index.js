@@ -1,7 +1,7 @@
 const express = require('express')   //imports express
 const connection = require('./db')    //imports db connection
 require('express-async-errors')    // helps us with async errors
-require('dotenv')                // access to dot env file
+require('dotenv').config();        // access to dot env file
 const cors = require('cors')     // imports cors
 const Router = require('./Routes/Router')
 
