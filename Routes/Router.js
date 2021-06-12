@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const userSchema = require("../models/userSchema");
 const sendEmail = require("../utils/Email/sendEmail");
 const { response } = require("express");
+const url = require('url')
 
 const Router = express();
 
@@ -76,9 +77,14 @@ Router.post("/requestRequestpassword", async function (request, response) {
 });
 
 Router.post("/passwordreset", async function (request, response) {
-  const { token, password, userId } = request.body; //Will work on this
 
-  let passwordResetToken = await Token.findOne({ userId });
+  const queryObject = url.parse(request.url, true).query
+
+  const { token, userId } = queryObject
+
+  const {password} = request.body; 
+
+  const passwordResetToken = await Token.findOne({ userId });
 
   if (!passwordResetToken)
     throw new Error("Invalid or Expired Password Reset token");
