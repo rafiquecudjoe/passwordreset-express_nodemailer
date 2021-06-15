@@ -1,19 +1,27 @@
 const express = require("express");
 const JWT = require("jsonwebtoken");
-const User = require("../models/userSchema");
 const Token = require("../models/token.model");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-const userSchema = require("../models/userSchema");
+const User = require("../models/userSchema");
 const sendEmail = require("../utils/Email/sendEmail");
 const { response } = require("express");
-const url = require('url')
+const url = require("url");
 
 const Router = express();
 
 JWT_SECRET = process.env.JWT_SECRET;
 bcryptSalt = process.env.BCRYPT_SALT;
 clientURL = process.env.CLIENT_URL;
+
+// Router.post("/async-error-test", async (request, response) => {
+//   let hi = await async();
+
+//   if (!hi) throw new Error("Erooooor");
+//   console.log("Helooooooo");
+
+//   response.send({ well: "We are not going to reach this line" });
+// });
 
 Router.post("/signup", async function (request, response) {
   const { email, fullname, password } = request.body;
@@ -46,43 +54,46 @@ Router.post("/signup", async function (request, response) {
   }
 });
 
-Router.post("/requestRequestpassword", async function (request, response) {
+Router.post("/requestResetPassword", async function (request, response, next) {
   const { email } = request.body;
+  console.log(email);
 
   const user = await User.findOne({ email });
 
-  if (!user) throw new Error("User does not exist");
+  if (!user) {
+    throw Error("User does not exist");
+  } else {
+    let token = await Token.findOne({ userId: user.id });
+    if (token) await token.deleteOne();
 
-  let token = await Token.findOne({ userId: user.id });
-  if (token) await token.deleteOne();
+    let resetToken = crypto.randomBytes(32).toString("hex");
+    const hash = await bcrypt.hash(resetToken, Number(bcryptSalt));
 
-  let resetToken = crypto.randomBytes(32).toString("hex");
-  const hash = await bcrypt.hash(resetToken, Number(bcryptSalt));
+    await new Token({
+      userId: user.id,
+      token: hash,
+      createdAt: Date.now(),
+    }).save();
 
-  await new Token({
-    userId: user.id,
-    token: hash,
-    createdAt: Date.now(),
-  }).save();
+    const link = `${clientURL}?token=${resetToken}&id=${user._id}`;
 
-  const link = `${clientURL}/passwordreset?token=${resetToken}&id=${user._id}`;
-
-  await sendEmail(
-    user.email,
-    "Password Reset Request",
-    { name: user.fullname, link: link },
-    "./template/requestResetPassword.handlebars"
-  );
-  response.status(200).send({ success: true, data: link });
+    await sendEmail(
+      user.email,
+      "Password Reset Request",
+      { name: user.fullname, link: link },
+      "./template/requestResetPassword.handlebars"
+    );
+    response.status(200).send({ success: true});
+  }
+  next();
 });
 
 Router.post("/passwordreset", async function (request, response) {
+  const queryObject = url.parse(request.url, true).query;
 
-  const queryObject = url.parse(request.url, true).query
+  const { token, userId } = queryObject;
 
-  const { token, userId } = queryObject
-
-  const {password} = request.body; 
+  const { password } = request.body;
 
   const passwordResetToken = await Token.findOne({ userId });
 

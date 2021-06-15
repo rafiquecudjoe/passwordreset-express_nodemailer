@@ -8,7 +8,7 @@ const userSchema = new Schema(
       type: String,
       trim: true,
       required: true,
-      unique: true,
+     
     },
     email: {
       type: String,
@@ -31,4 +31,6 @@ userSchema.pre("save", async function (next) {
   this.password = hash;
   next();
 });
+
+
 module.exports = mongoose.model("user", userSchema);
