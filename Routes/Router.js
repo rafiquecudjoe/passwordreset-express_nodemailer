@@ -5,7 +5,6 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const User = require("../models/userSchema");
 const sendEmail = require("../utils/Email/sendEmail");
-const { response } = require("express");
 const url = require("url");
 
 const Router = express();
@@ -14,14 +13,6 @@ JWT_SECRET = process.env.JWT_SECRET;
 bcryptSalt = process.env.BCRYPT_SALT;
 clientURL = process.env.CLIENT_URL;
 
-// Router.post("/async-error-test", async (request, response) => {
-//   let hi = await async();
-
-//   if (!hi) throw new Error("Erooooor");
-//   console.log("Helooooooo");
-
-//   response.send({ well: "We are not going to reach this line" });
-// });
 
 Router.post("/signup", async function (request, response) {
   const { email, fullname, password } = request.body;
@@ -56,7 +47,7 @@ Router.post("/signup", async function (request, response) {
 
 Router.post("/requestResetPassword", async function (request, response, next) {
   const { email } = request.body;
-  console.log(email);
+  
 
   const user = await User.findOne({ email });
 
@@ -77,13 +68,21 @@ Router.post("/requestResetPassword", async function (request, response, next) {
 
     const link = `${clientURL}?token=${resetToken}&id=${user._id}`;
 
-    await sendEmail(
+    const emailSent = await sendEmail(
       user.email,
       "Password Reset Request",
       { name: user.fullname, link: link },
       "./template/requestResetPassword.handlebars"
     );
-    response.status(200).send({ success: true});
+    if (emailSent) {
+      response.status(200).send({ success: true});
+      
+    } else {
+      response.status(200).send({ success: true,message:"Email Failed to send"});
+      
+    }
+
+    
   }
   next();
 });
@@ -94,6 +93,8 @@ Router.post("/passwordreset", async function (request, response) {
   const { token, userId } = queryObject;
 
   const { password } = request.body;
+
+ 
 
   const passwordResetToken = await Token.findOne({ userId });
 
@@ -126,3 +127,6 @@ Router.post("/passwordreset", async function (request, response) {
 });
 
 module.exports = Router;
+
+
+
